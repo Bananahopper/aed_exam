@@ -79,16 +79,6 @@ class Visualizer:
             OUTPUT_DIR + "/charts/region_by_sector.png", dpi=300, bbox_inches="tight"
         )
 
-        summary = pd.DataFrame(
-            {
-                "Total Clients": region_sector.sum(axis=1),
-                "Clients LU": region_sector.get("LU", 0),
-                "Clients NON LU": region_sector.get("NON LU", 0),
-                "% NON LU": region_sector_pct.get("NON LU", 0).round(1),
-            }
-        )
-        summary.to_excel(OUTPUT_DIR + "/tables/region_by_sector_summary.xlsx")
-
     def plot_suspect_operations_by_sector(self):
         """
         Analyze suspicious operations requiring mandatory declarations (DOS = Déclaration d'Opérations Suspectes)
@@ -181,7 +171,7 @@ class Visualizer:
 
         unique_data = self.data.drop_duplicates(subset=["SURVEY_ID"])
 
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 15))
+        fig, axes = plt.subplots(3, 1, figsize=(12, 15))
 
         # Conditions
         condition1 = (unique_data["CLIENT_ID_STATUS"] == "AVANCEE") & (
@@ -200,71 +190,48 @@ class Visualizer:
             [condition1, condition2, condition3], choices, default="NA"
         )
 
-        # 1. Identification compliance by immo sector
-        immo_compliance = unique_data[unique_data["SECTOR"] == "IMMO"]
-        immo_compliance_counts = (
-            immo_compliance.groupby("IDENTIFICATION_COMPLIANCE")
-            .size()
-            .reset_index(name="Count")
-        )
-        immo_compliance_counts.plot(
-            kind="bar",
-            x="IDENTIFICATION_COMPLIANCE",
-            y="Count",
-            ax=ax1,
-            color="#2E86AB",
-        )
-        ax1.set_title(
-            "Conformité d'Identification dans le Secteur IMMO",
-            fontsize=14,
-            fontweight="bold",
-        )
-        ax1.set_xlabel("Conformité d'Identification", fontsize=12)
-        ax1.set_ylabel("Nombre de Clients", fontsize=12)
+        sectors = [
+            {"name": "IMMO", "color": "#2E86AB", "ax": axes[0]},
+            {"name": "SERVICE", "color": "#E63946", "ax": axes[1]},
+            {"name": "ECO", "color": "#F77F00", "ax": axes[2]}
+        ]
 
-        # 2. Identification compliance by service sector
-        service_compliance = unique_data[unique_data["SECTOR"] == "SERVICE"]
-        service_compliance_counts = (
-            service_compliance.groupby("IDENTIFICATION_COMPLIANCE")
-            .size()
-            .reset_index(name="Count")
-        )
-        service_compliance_counts.plot(
-            kind="bar",
-            x="IDENTIFICATION_COMPLIANCE",
-            y="Count",
-            ax=ax2,
-            color="#E63946",
-        )
-        ax2.set_title(
-            "Conformité d'Identification dans le Secteur SERVICE",
-            fontsize=14,
-            fontweight="bold",
-        )
-        ax2.set_xlabel("Conformité d'Identification", fontsize=12)
-        ax2.set_ylabel("Nombre de Clients", fontsize=12)
-
-        # 3. Identification compliance by eco sector
-        other_compliance = unique_data[unique_data["SECTOR"] == "ECO"]
-        other_compliance_counts = (
-            other_compliance.groupby("IDENTIFICATION_COMPLIANCE")
-            .size()
-            .reset_index(name="Count")
-        )
-        other_compliance_counts.plot(
-            kind="bar",
-            x="IDENTIFICATION_COMPLIANCE",
-            y="Count",
-            ax=ax3,
-            color="#F77F00",
-        )
-        ax3.set_title(
-            "Conformité d'Identification dans le Secteur ECO",
-            fontsize=14,
-            fontweight="bold",
-        )
-        ax3.set_xlabel("Conformité d'Identification", fontsize=12)
-        ax3.set_ylabel("Nombre de Clients", fontsize=12)
+        for sector_info in sectors:
+            sector_name = sector_info["name"]
+            color = sector_info["color"]
+            ax = sector_info["ax"]
+            
+            sector_compliance = unique_data[unique_data["SECTOR"] == sector_name]
+            sector_compliance_counts = (
+                sector_compliance.groupby("IDENTIFICATION_COMPLIANCE")
+                .size()
+                .reset_index(name="Count")
+            )
+            
+            bars = sector_compliance_counts.plot(
+                kind="bar",
+                x="IDENTIFICATION_COMPLIANCE",
+                y="Count",
+                ax=ax,
+                color=color,
+                legend=False
+            )
+            
+            for i, bar in enumerate(ax.patches):
+                height = bar.get_height()
+                if height > 0:
+                    ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
+                        f'{int(height)}',
+                        ha='center', va='bottom', fontweight='bold', fontsize=10)
+            
+            ax.set_title(
+                f"Conformité d'Identification dans le Secteur {sector_name}",
+                fontsize=14,
+                fontweight="bold",
+            )
+            ax.set_xlabel("Conformité d'Identification", fontsize=12)
+            ax.set_ylabel("Nombre de Clients", fontsize=12)
+            ax.tick_params(axis='x', rotation=0)
 
         plt.tight_layout()
         plt.savefig(
@@ -272,26 +239,6 @@ class Visualizer:
             dpi=300,
             bbox_inches="tight",
         )
-
-        summary = pd.DataFrame(
-            {
-                "Total Clients": unique_data.groupby("SECTOR")["SURVEY_ID"].nunique(),
-                "AVANCEE": unique_data[
-                    unique_data["IDENTIFICATION_COMPLIANCE"] == "AVANCEE"
-                ]
-                .groupby("SECTOR")["SURVEY_ID"]
-                .nunique(),
-                "SIMPLE": unique_data[
-                    unique_data["IDENTIFICATION_COMPLIANCE"] == "SIMPLE"
-                ]
-                .groupby("SECTOR")["SURVEY_ID"]
-                .nunique(),
-                "RISK": unique_data[unique_data["IDENTIFICATION_COMPLIANCE"] == "RISK"]
-                .groupby("SECTOR")["SURVEY_ID"]
-                .nunique(),
-            }
-        )
-        summary.to_excel(OUTPUT_DIR + "/tables/identification_compliance_summary.xlsx")
 
     def plot_document_archiving_compliance_by_sector(self):
         """
@@ -340,21 +287,6 @@ class Visualizer:
             OUTPUT_DIR + "/charts/document_archiving_compliance_by_sector.png",
             dpi=300,
             bbox_inches="tight",
-        )
-
-        summary = pd.DataFrame(
-            {
-                "Total Clients": unique_data.groupby("SECTOR")["SURVEY_ID"].nunique(),
-                "Conforme": unique_data[unique_data["COMPLIANCE"] == "C"]
-                .groupby("SECTOR")["SURVEY_ID"]
-                .nunique(),
-                "Non Conforme": unique_data[unique_data["COMPLIANCE"] == "NC"]
-                .groupby("SECTOR")["SURVEY_ID"]
-                .nunique(),
-            }
-        )
-        summary.to_excel(
-            OUTPUT_DIR + "/tables/document_archiving_compliance_summary.xlsx"
         )
 
     def plot_cash_transactions_by_sector(self):
@@ -410,14 +342,13 @@ class Visualizer:
         """
         Analyze high-risk revenue types by sector including IMMO transactions
         """
-        unique_data = self.data.drop_duplicates(subset=["SURVEY_ID"])
 
         high_risk_revenues = ["SERV_CREATION_S", "SERV_FONCTION", "SERV_VIRTUEL"]
 
         high_risk_clients = (
-            unique_data[unique_data["REVENUE_KIND"].isin(high_risk_revenues)]
-            .groupby("SECTOR")
-            .size()
+            self.data[self.data["REVENUE_KIND"].isin(high_risk_revenues)]
+            .groupby("SECTOR")["SURVEY_ID"]
+            .nunique()
         )
 
         immo_transactions = (
@@ -425,28 +356,6 @@ class Visualizer:
             .groupby("SURVEY_ID")["NB_TRANSACTIONS"]
             .sum()
             .reset_index()
-        )
-
-        immo_transactions = (
-            self.data[self.data["REVENUE_KIND"] == "IMMO_ACHAT_VENT"]
-            .groupby("SURVEY_ID")["NB_TRANSACTIONS"]
-            .sum()
-            .reset_index()
-        )
-
-        threshold = immo_transactions["NB_TRANSACTIONS"].quantile(0.75)
-        print(f"75th percentile: {threshold}")
-        print(f"Total IMMO clients: {len(immo_transactions)}")
-        print(
-            f"Clients > threshold: {(immo_transactions['NB_TRANSACTIONS'] > threshold).sum()}"
-        )
-        print(
-            f"Clients >= threshold: {(immo_transactions['NB_TRANSACTIONS'] >= threshold).sum()}"
-        )
-
-        # Check distribution around threshold
-        print(
-            f"\nClients with 50-70 transactions: {((immo_transactions['NB_TRANSACTIONS'] >= 50) & (immo_transactions['NB_TRANSACTIONS'] <= 70)).sum()}"
         )
 
         if not immo_transactions.empty:
@@ -456,9 +365,9 @@ class Visualizer:
             ]["SURVEY_ID"]
 
             immo_high_risk = (
-                unique_data[unique_data["SURVEY_ID"].isin(high_volume_clients)]
-                .groupby("SECTOR")
-                .size()
+                self.data[self.data["SURVEY_ID"].isin(high_volume_clients)]
+                .groupby("SECTOR")["SURVEY_ID"]
+                .nunique()
             )
 
             # Calculate IMMO statistics
@@ -478,7 +387,7 @@ class Visualizer:
 
         summary = pd.DataFrame(
             {
-                "Total Clients": unique_data.groupby("SECTOR")["SURVEY_ID"].nunique(),
+                "Total Clients": self.data.groupby("SECTOR")["SURVEY_ID"].nunique(),
                 "Clients Revenus Services Risque": high_risk_clients.fillna(0).astype(
                     int
                 ),
@@ -491,18 +400,17 @@ class Visualizer:
             summary["Total Clients Risque Élevé"] / summary["Total Clients"] * 100
         ).round(1)
 
-        # Save to Excel with multiple sheets
         with pd.ExcelWriter(
             OUTPUT_DIR + "/tables/high_risk_revenue_complete_summary.xlsx"
         ) as writer:
             summary.to_excel(writer, sheet_name="Résumé par Secteur")
 
-            # Add IMMO statistics sheet if available
             if immo_stats:
                 immo_stats_df = pd.DataFrame([immo_stats])
                 immo_stats_df.to_excel(
                     writer, sheet_name="Statistiques IMMO", index=False
                 )
+
 
     def plot_risk_assesment_by_sector(self):
         """
@@ -510,10 +418,6 @@ class Visualizer:
         """
         unique_data = self.data.drop_duplicates(subset=["SURVEY_ID"])
         sectors = ["IMMO", "SERVICE", "ECO"]
-
-        print(unique_data["RISK_CATEGORY"].value_counts())
-        print(unique_data["SECTOR"].value_counts())
-        print(unique_data.groupby(["SECTOR", "RISK_CATEGORY"]).size())
 
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 15))
 
