@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Default: Run your main.py script
+  risk-analysis:
+    build: .
+    container_name: risk_analysis_app
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./src:/app/src
+      - ./main.py:/app/main.py
+    environment:
+      - PYTHONPATH=/app
+    command: python main.py
+    
+  # Alternative: Jupyter Lab
+  risk-analysis-jupyter:
+    build: .
+    container_name: risk_analysis_jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./notebooks:/app/notebooks
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+      - JUPYTER_ENABLE_LAB=yes
+    command: python -m jupyterlab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ServerApp.token='' --ServerApp.password=''
+    profiles:
+      - jupyter
+
+  # Alternative: Interactive shell
+  risk-analysis-shell:
+    build: .
+    container_name: risk_analysis_shell
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./src:/app/src
+      - ./main.py:/app/main.py
+    environment:
+      - PYTHONPATH=/app
+    command: /bin/bash
+    stdin_open: true
+    tty: true
+    profiles:
+      - shell

@@ -1,0 +1,18 @@
+name: aed_exam_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13.2
+  - ipykernel
+  - pandas=2.3.1
+  - numpy=2.3.1
+  - matplotlib=3.10.3
+  - seaborn=0.13.2
+  - openpyxl=3.1.5
+  - pyarrow=20.0.0
+  - pillow=11.3.0
+  - pip
+  - pip:
+    - fireducks==1.3.2
+    - firefw==1.3.2
