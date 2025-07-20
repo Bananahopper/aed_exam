@@ -34,7 +34,8 @@ class RiskAnalyzer:
             self.data_loader.output_dir + "/risk_analysis_processed_data.xlsx"
         ):
             return print("Data already processed. You can skip this step.")
-
+        
+        print("Processing data for risk analysis...")
         data = self.load_data()
 
         # First we normalize the data in the Refusal and Termination columns
@@ -103,7 +104,12 @@ class RiskAnalyzer:
         """
         Calculate risk scores based on the processed data.
         """
-        data = self.load_data()
+        if not os.path.exists(
+            self.data_loader.output_dir + "/risk_analysis_processed_data.xlsx"
+        ):
+            data = self.process_data()
+        else:
+            data = self.load_data()
 
         # So for each row we can calculate a risk score based on the following criteria:
         # - BU_REL_REFUSAL: if 'Y' then +1
